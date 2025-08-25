@@ -37,7 +37,6 @@ import 'package:internal_http_server/file_model.dart';
 import 'package:internal_http_server/logger.dart';
 import 'package:path/path.dart';
 import 'package:mime/mime.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 
 class InternalHttpServer {
@@ -60,6 +59,7 @@ class InternalHttpServer {
 
   List<MimeMultipart> parts = [];
 
+  final Directory uploadRootDir;
   final Directory? _rootDir;
   HttpServer? _server;
 
@@ -73,6 +73,7 @@ class InternalHttpServer {
     required this.address,
     // the webserver title
     required this.title,
+    required this.uploadRootDir,
     // the default index file of the website
     String? indexFile,
     // the website link in footer
@@ -192,13 +193,13 @@ class InternalHttpServer {
     String fileName = jsonData['name'];
 
     var savePath = jsonData['path'];
-    final appDocDir = await getApplicationDocumentsDirectory();
-    String subdirectoryPath = appDocDir.path;
+    // 使用 uploadRootDir 替代 getApplicationDocumentsDirectory
+    String directoryPath = uploadRootDir.path;
     if (savePath != '') {
-      subdirectoryPath += '/$savePath';
+      directoryPath += '$savePath';
     }
 
-    uploadFile = File(p.join(subdirectoryPath, fileName)).openWrite();
+    uploadFile = File(p.join(directoryPath, fileName)).openWrite();
   }
 
   _handleFileUploading(HttpRequest request) async {
@@ -272,29 +273,16 @@ class InternalHttpServer {
   }
 
   _getFileList(HttpRequest request) async {
-    // var path = request.headers.contentType!.parameters['path']!;
-    // debugPrint('path line 336: $path');
+
+    if (!await uploadRootDir.exists()) {
+      await uploadRootDir.create(recursive: true);
+    }
 
     Map<String, dynamic> jsonData = await _getParameters(request);
     String directoryName = jsonData['path'];
-    // print('directoryName:$directoryName');
 
-    Directory appDocDir = await getApplicationDocumentsDirectory();
-    // if (uploadRootDir == null) {
-    //   uploadRootDir = appDocDir.path;
-    // } else {
-    //   uploadRootDir = appDocDir.path + uploadRootDir!;
-    //   print('upload folder 2==============: $uploadRootDir');
-    //   var directory = Directory(uploadRootDir!);
-    //   if (!await directory.exists()) {
-    //     //create the folder
-    //     directory
-    //         .create(recursive: true)
-    //         .then((Directory newDirectory) {})
-    //         .catchError((e) {});
-    //   }
-    // }
-    String subdirectoryPath = appDocDir.path + directoryName;
+    // 使用 uploadRootDir 替代 getApplicationDocumentsDirectory
+    String subdirectoryPath = uploadRootDir.path + directoryName;
     debugPrint('subdirectoryPath: $subdirectoryPath');
     Directory documentsDirectory = Directory(subdirectoryPath);
 
@@ -308,7 +296,7 @@ class InternalHttpServer {
         if (folder != 'opencc') {
           var item = FileModel(
               fileName: basename(dir.path),
-              path: '/${dir.path.replaceAll('${appDocDir.path}/', '')}');
+              path: '/${dir.path.replaceAll('${uploadRootDir.path}/', '')}');
           filelist.add(item.toJson());
         }
       }
@@ -320,7 +308,7 @@ class InternalHttpServer {
         // print('filename: $fileName');
         var item = FileModel(
             fileName: fileName,
-            path: '/${file.path.replaceAll('${appDocDir.path}/', '')}',
+            path: '/${file.path.replaceAll('${uploadRootDir.path}/', '')}',
             fileSize: file.lengthSync().toDouble());
         filelist.add(item.toJson());
       }
@@ -331,7 +319,7 @@ class InternalHttpServer {
 
     if (Platform.isAndroid) {
       AndroidDeviceInfo androidInfo = await deviceInfo.androidInfo;
-      deviceName = androidInfo.model;
+      deviceName = androidInfo.name;
     } else if (Platform.isIOS) {
       IosDeviceInfo iosInfo = await deviceInfo.iosInfo;
       deviceName = iosInfo.name;
@@ -361,8 +349,8 @@ class InternalHttpServer {
     Map<String, dynamic> jsonData = await _getParameters(request);
     String deleteFile = jsonData['filename'];
 
-    Directory appDocDir = await getApplicationDocumentsDirectory();
-    String filePath = '${appDocDir.path}/$deleteFile';
+    // 使用 uploadRootDir 替代 getApplicationDocumentsDirectory
+    String filePath = '${uploadRootDir.path}/$deleteFile';
 
     String result = '';
     var statusCode = HttpStatus.ok;
@@ -405,8 +393,8 @@ class InternalHttpServer {
     }
     debugPrint(directoryName);
 
-    Directory appDocDir = await getApplicationDocumentsDirectory();
-    String directoryPath = '/${appDocDir.path}/$directoryName';
+    // 使用 uploadRootDir 替代 getApplicationDocumentsDirectory
+    String directoryPath = '${uploadRootDir.path}/$directoryName';
     Directory directory = Directory(directoryPath);
 
     final response = {
@@ -438,8 +426,8 @@ class InternalHttpServer {
 
     String downloadFile = request.uri.queryParameters['path']!;
 
-    Directory appDocDir = await getApplicationDocumentsDirectory();
-    String filePath = '${appDocDir.path}/$downloadFile';
+    // 使用 uploadRootDir 替代 getApplicationDocumentsDirectory
+    String filePath = '${uploadRootDir.path}/$downloadFile';
 
     File file = File(filePath);
     if (await file.exists()) {
@@ -463,9 +451,9 @@ class InternalHttpServer {
 
     debugPrint('old path:$oldPath new path:$newPath');
 
-    Directory appDocDir = await getApplicationDocumentsDirectory();
-    String oldFilePath = '${appDocDir.path}/$oldPath';
-    String newFilePath = '${appDocDir.path}/$newPath';
+    // 使用 uploadRootDir 替代 getApplicationDocumentsDirectory
+    String oldFilePath = '${uploadRootDir.path}/$oldPath';
+    String newFilePath = '${uploadRootDir.path}/$newPath';
 
     String result = '';
     var statusCode = HttpStatus.ok;
