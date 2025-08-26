@@ -59,7 +59,10 @@ class InternalHttpServer {
 
   List<MimeMultipart> parts = [];
 
+  // 允许上传的根目录
   final Directory uploadRootDir;
+  // 允许上传的文件类型。null表示允许所有类型
+  final List<String>? acceptedTypes;
   final Directory? _rootDir;
   HttpServer? _server;
 
@@ -74,6 +77,7 @@ class InternalHttpServer {
     // the webserver title
     required this.title,
     required this.uploadRootDir,
+    this.acceptedTypes,
     // the default index file of the website
     String? indexFile,
     // the website link in footer
@@ -331,7 +335,8 @@ class InternalHttpServer {
       'title': title,
       'description': _description,
       'website': _website,
-      'copyright': _copyright
+      'copyright': _copyright,
+      'acceptedTypes': acceptedTypes
     };
 
     //print(response);
